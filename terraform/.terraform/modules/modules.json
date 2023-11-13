@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"s3_website","Source":"git::https://github.com/ChristopherBare/terraform-modules.git","Dir":".terraform/modules/s3_website"}]}
