@@ -23,7 +23,7 @@ const Form = () => {
                         {/*</label>*/}
                     </div>
                     <div className="form-control mt-6">
-                        <button className="btn btn-primary">Link</button>
+                        <button className="btn btn-primary">Create</button>
                     </div>
                 </form>
             </div>
