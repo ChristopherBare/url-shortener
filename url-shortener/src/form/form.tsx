@@ -132,14 +132,16 @@ const Form = () => {
                         <label className="label">
                             <span className="label-text">Long URL</span>
                         </label>
-                        <input type="url"
-                               onChange={handleChange}
-                               value={formState.longURL}
-                               placeholder="https://www..."
-                               className={hasError("longURL")
-                                    ? "input input-error"
-                                    : "input input-bordered" }
-                               required />
+                        <input
+                            id="longURL"
+                            type="url"
+                            onChange={handleChange}
+                            value={formState.longURL}
+                            placeholder="https://www..."
+                            className={hasError("longURL")
+                                ? "input input-error"
+                                : "input input-bordered" }
+                            required />
                     </div>
                     <div className={hasError("longURL")
                             ? "text-danger" : "visually-hidden" }>
@@ -167,7 +169,7 @@ const Form = () => {
                         <label className="label">
                             <span className="label-text">Custom link</span>
                         </label>
-                        <input type="password" placeholder="https://shorter.link..." className="input input-bordered" required />
+                        <input type="text" placeholder="https://shorter.link..." className="input input-bordered" required />
                     </div>
                     <div className="form-control mt-6">
                         <button className="btn btn-primary">Create</button>
