@@ -3,18 +3,16 @@ import {useEffect, useState} from "react";
 import {nanoid} from 'nanoid';
 import { isWebUri } from "valid-url";
 import { createClient } from '@supabase/supabase-js';
+
 // Create a single supabase client for interacting with your database
 const supabase = createClient(
-    process.env.REACT_APP_SUPABASE_URL || "https://xpzdikragdwewvktxwre.supabase.co",
-    process.env.REACT_APP_SUPABASE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwemRpa3JhZ2R3ZXd2a3R4d3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTk5MTU3MzksImV4cCI6MjAxNTQ5MTczOX0.Ro6gMNRvindA_dhbL7iNuKGJgm65TcLE4gpX3k8fCCw"
+    "https://xpzdikragdwewvktxwre.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwemRpa3JhZ2R3ZXd2a3R4d3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTk5MTU3MzksImV4cCI6MjAxNTQ5MTczOX0.Ro6gMNRvindA_dhbL7iNuKGJgm65TcLE4gpX3k8fCCw"
 );
-
-
-// const supabase = createClient('', '')
 
 interface FormState {
     longURL: string;
-    preferedAlias: string;
+    preferredAlias: string;
     generatedURL: string;
     loading: boolean;
     errors: string[];
@@ -24,7 +22,7 @@ interface FormState {
 const Form = () => {
     const [formState, setFormState] = useState<FormState>({
         longURL: '',
-        preferedAlias: '',
+        preferredAlias: '',
         generatedURL: '',
         loading: false,
         errors: [],
@@ -37,7 +35,7 @@ const Form = () => {
 
     const onSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        setFormState((prevState) => ({ ...prevState, loading: true, generatedURL: '' }));
+        setFormState((prevState) => ({ ...prevState, loading: true, generatedURL: "" }));
 
         const isFormValid = await validateInput();
 
@@ -45,27 +43,28 @@ const Form = () => {
             return;
         }
 
+        let baseURL = "localhost";
         let generatedKey = nanoid(5);
-        let url = `minilinkit.com/${generatedKey}`;
+        let url = `${baseURL}/${generatedKey}`;
 
-        if (formState.preferedAlias !== '') {
-            generatedKey = formState.preferedAlias;
-            url = `minilinkit.com/${formState.preferedAlias}`;
+        if (formState.preferredAlias !== "") {
+            generatedKey = formState.preferredAlias;
+            url = `${baseURL}/${formState.preferredAlias}`;
         }
 
-        const db = getDatabase();
-        set(ref(db, `/${generatedKey}`), {
-            generatedKey,
-            longURL: formState.longURL,
-            preferedAlias: formState.preferedAlias,
-            generatedURL: url,
-        })
-            .then(() => {
-                setFormState((prevState) => ({ ...prevState, generatedURL: url, loading: false }));
-            })
-            .catch((error) => {
-                console.error('Error saving to database: ', error);
-            });
+        const { data, error } = await supabase
+            .from("urls")
+            .upsert(
+                [{ generatedKey, longURL: formState.longURL, preferredAlias: formState.preferredAlias, generatedURL: url }],
+                { onConflict: ["preferredAlias"] }
+            );
+
+        if (error) {
+            console.error("Error saving to database: ", error);
+            return;
+        }
+
+        setFormState((prevState) => ({ ...prevState, generatedURL: url, loading: false }));
     };
 
     const hasError = (key: string) => {
@@ -82,27 +81,36 @@ const Form = () => {
         const newErrorMessages: Record<string, string> = { ...formState.errorMessage };
 
         if (formState.longURL.length === 0) {
-            newErrors.push('longURL');
-            newErrorMessages['longURL'] = 'Please enter your URL!';
+            newErrors.push("longURL");
+            newErrorMessages["longURL"] = "Please enter your URL!";
         } else if (!isWebUri(formState.longURL)) {
-            newErrors.push('longURL');
-            newErrorMessages['longURL'] = 'Please enter a valid URL!';
+            newErrors.push("longURL");
+            newErrorMessages["longURL"] = "Please enter a valid URL!";
         }
 
-        if (formState.preferedAlias !== '') {
-            if (formState.preferedAlias.length > 7) {
-                newErrors.push('preferedAlias');
-                newErrorMessages['preferedAlias'] = 'Please enter an alias less than 7 characters';
-            } else if (formState.preferedAlias.includes(' ')) {
-                newErrors.push('preferedAlias');
-                newErrorMessages['preferedAlias'] = 'Spaces are not allowed in aliases';
+        if (formState.preferredAlias !== "") {
+            if (formState.preferredAlias.length > 7) {
+                newErrors.push("preferredAlias");
+                newErrorMessages["preferredAlias"] = "Please enter an alias less than 7 characters";
+            } else if (formState.preferredAlias.includes(" ")) {
+                newErrors.push("preferredAlias");
+                newErrorMessages["preferredAlias"] = "Spaces are not allowed in aliases";
             }
 
-            // const keyExists = await checkKeyExists();
+            const { data: keyExists, error } = await supabase
+                .from("urls")
+                .select("preferredAlias")
+                .eq("preferredAlias", formState.preferredAlias)
+                .single();
 
-            if (keyExists.exists()) {
-                newErrors.push('preferedAlias');
-                newErrorMessages['preferedAlias'] = 'The alias you entered already exists. Please enter another one.';
+            if (error) {
+                console.error("Error checking if key exists: ", error);
+                return false;
+            }
+
+            if (keyExists) {
+                newErrors.push("preferredAlias");
+                newErrorMessages["preferredAlias"] = "The alias you entered already exists. Please enter another one.";
             }
         }
 
@@ -111,37 +119,55 @@ const Form = () => {
         return newErrors.length === 0;
     };
 
-    // const checkKeyExists = async () => {
-    //     const dbRef = ref(getDatabase());
-    //     return get(child(dbRef, `/${formState.preferedAlias}`)).catch(() => {
-    //         return false;
-    //     });
-    // };
-
     const copyToClipboard = () => {
         navigator.clipboard.writeText(formState.generatedURL);
-        setFormState((prevState) => ({ ...prevState, toolTipMessage: 'Copied!' }));
+        setFormState((prevState) => ({ ...prevState, toolTipMessage: "Copied!" }));
     };
+
     return (
         <div className="flex justify-center items-center h-screen">
             <div className="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
-                <form className="card-body">
+                <form autoComplete="off" className="card-body">
                     <div className="form-control">
                         <label className="label">
                             <span className="label-text">Long URL</span>
                         </label>
-                        <input type="email" placeholder="https://www..." className="input input-bordered" required />
+                        <input type="url"
+                               onChange={handleChange}
+                               value={formState.longURL}
+                               placeholder="https://www..."
+                               className={hasError("longURL")
+                                    ? "input input-error"
+                                    : "input input-bordered" }
+                               required />
+                    </div>
+                    <div className={hasError("longURL")
+                            ? "text-danger" : "visually-hidden" }>
+                        {formState.errorMessage.longUrl}
+                    </div>
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Your short URL</span>
+                        </label>
+                        <div className="form-control">
+                            <input
+                                id="preferredAlias"
+                                onChange={handleChange}
+                                value={formState.preferredAlias}
+                                className={
+                                hasError("preferredAlias")
+                                    ? "input input-error"
+                                    : "input input-bordered"}
+                                type="text"
+                                placeholder="eg. 3fwias (Optional)"
+                            />
+                        </div>
                     </div>
                     <div className="form-control">
                         <label className="label">
                             <span className="label-text">Custom link</span>
                         </label>
                         <input type="password" placeholder="https://shorter.link..." className="input input-bordered" required />
-                        {/*<label className="label">*/}
-                        {/*    <a href="#" className="label-text-alt link link-hover">*/}
-                        {/*        Forgot password?*/}
-                        {/*    </a>*/}
-                        {/*</label>*/}
                     </div>
                     <div className="form-control mt-6">
                         <button className="btn btn-primary">Create</button>
