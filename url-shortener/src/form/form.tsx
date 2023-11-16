@@ -1,8 +1,8 @@
 import '../App.css';
 import {useEffect, useState} from "react";
 import {nanoid} from 'nanoid';
-import { isWebUri } from "valid-url";
-import { createClient } from '@supabase/supabase-js';
+import {isWebUri} from "valid-url";
+import {createClient} from '@supabase/supabase-js';
 
 // Create a single supabase client for interacting with your database
 const supabase = createClient(
@@ -19,6 +19,7 @@ interface FormState {
     errorMessage: Record<string, string>;
     toolTipMessage: string;
 }
+
 const Form = () => {
     const [formState, setFormState] = useState<FormState>({
         longURL: '',
@@ -29,13 +30,13 @@ const Form = () => {
         errorMessage: {},
         toolTipMessage: 'Copy To Clipboard',
     });
-   useEffect(() => {
+    useEffect(() => {
         document.title = 'small.er';
     }, []);
 
     const onSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        setFormState((prevState) => ({ ...prevState, loading: true, generatedURL: "" }));
+        setFormState((prevState) => ({...prevState, loading: true, generatedURL: ""}));
 
         const isFormValid = await validateInput();
 
@@ -52,11 +53,11 @@ const Form = () => {
             url = `${baseURL}/${formState.preferredAlias}`;
         }
 
-        const { data, error } = await supabase
+        const {data, error} = await supabase
             .from("urls")
             .upsert(
-                [{ generatedKey, longURL: formState.longURL, preferredAlias: formState.preferredAlias, generatedURL: url }],
-                { onConflict: ["preferredAlias"] }
+                [{generatedKey, longURL: formState.longURL, preferredAlias: formState.preferredAlias, generatedURL: url}],
+                {onConflict: ["preferredAlias"]}
             );
 
         if (error) {
@@ -64,7 +65,7 @@ const Form = () => {
             return;
         }
 
-        setFormState((prevState) => ({ ...prevState, generatedURL: url, loading: false }));
+        setFormState((prevState) => ({...prevState, generatedURL: url, loading: false}));
     };
 
     const hasError = (key: string) => {
@@ -72,13 +73,13 @@ const Form = () => {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { id, value } = e.target;
-        setFormState((prevState) => ({ ...prevState, [id]: value }));
+        const {id, value} = e.target;
+        setFormState((prevState) => ({...prevState, [id]: value}));
     };
 
     const validateInput = async () => {
         const newErrors: string[] = [];
-        const newErrorMessages: Record<string, string> = { ...formState.errorMessage };
+        const newErrorMessages: Record<string, string> = {...formState.errorMessage};
 
         if (formState.longURL.length === 0) {
             newErrors.push("longURL");
@@ -97,7 +98,7 @@ const Form = () => {
                 newErrorMessages["preferredAlias"] = "Spaces are not allowed in aliases";
             }
 
-            const { data: keyExists, error } = await supabase
+            const {data: keyExists, error} = await supabase
                 .from("urls")
                 .select("preferredAlias")
                 .eq("preferredAlias", formState.preferredAlias)
@@ -114,14 +115,14 @@ const Form = () => {
             }
         }
 
-        setFormState((prevState) => ({ ...prevState, errors: newErrors, errorMessage: newErrorMessages, loading: false }));
+        setFormState((prevState) => ({...prevState, errors: newErrors, errorMessage: newErrorMessages, loading: false}));
 
         return newErrors.length === 0;
     };
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(formState.generatedURL);
-        setFormState((prevState) => ({ ...prevState, toolTipMessage: "Copied!" }));
+        setFormState((prevState) => ({...prevState, toolTipMessage: "Copied!"}));
     };
 
     return (
@@ -140,11 +141,11 @@ const Form = () => {
                             placeholder="https://www..."
                             className={hasError("longURL")
                                 ? "input input-error"
-                                : "input input-bordered" }
-                            required />
+                                : "input input-bordered"}
+                            required/>
                     </div>
                     <div className={hasError("longURL")
-                            ? "text-danger" : "visually-hidden" }>
+                        ? "text-danger" : "visually-hidden"}>
                         {formState.errorMessage.longUrl}
                     </div>
                     <div className="form-control">
@@ -157,22 +158,43 @@ const Form = () => {
                                 onChange={handleChange}
                                 value={formState.preferredAlias}
                                 className={
-                                hasError("preferredAlias")
-                                    ? "input input-error"
-                                    : "input input-bordered"}
+                                    hasError("preferredAlias")
+                                        ? "input input-error"
+                                        : "input input-bordered"}
                                 type="text"
                                 placeholder="eg. 3fwias (Optional)"
                             />
                         </div>
                     </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Custom link</span>
-                        </label>
-                        <input type="text" placeholder="https://shorter.link..." className="input input-bordered" required />
-                    </div>
+                    {
+                        formState.generatedURL === '' ?
+                            <div></div>
+                            :
+                            <div id="generatedURL">
+                                <span>Your generated URL is: </span>
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">Custom link</span>
+                                    </label>
+                                    <input type="text"
+                                           value={formState.generatedURL}
+                                           placeholder="https://shorter.link..."
+                                           className="input input-bordered"/>
+
+                                    <button onClick={copyToClipboard} data-toggle="tooltip" data-placement="top" title="Tooltip on top" className="btn btn-outline-secondary" type="button">Copy</button>
+
+                                </div>
+                            </div>
+                    }
                     <div className="form-control mt-6">
-                        <button className="btn btn-primary">Create</button>
+                        <button className="btn btn-primary" onClick={onSubmit}>
+                            {
+                                formState.loading ?
+                                    <span className="loading loading-ring loading-lg"></span>
+                                    :
+                                    <span>Create</span>
+                            }
+                        </button>
                     </div>
                 </form>
             </div>
