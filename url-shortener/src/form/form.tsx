@@ -24,12 +24,6 @@ interface FormState {
     alertText: string;
     alertStatus: string;
 }
-
-interface Toast {
-    text: string;
-    status: string;
-}
-
 const Form = () => {
     const [formState, setFormState] = useState<FormState>({
         longURL: '',
