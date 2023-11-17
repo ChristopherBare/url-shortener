@@ -1,5 +1,5 @@
 import '../App.css';
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {nanoid} from 'nanoid';
 import {isWebUri} from "valid-url";
 import {createClient} from '@supabase/supabase-js';
@@ -53,11 +53,10 @@ const Form = () => {
             url = `${baseURL}/${formState.preferredAlias}`;
         }
 
-        const {data, error} = await supabase
+        const {error} = await supabase
             .from("urls")
             .upsert(
-                [{generatedKey, longURL: formState.longURL, preferredAlias: formState.preferredAlias, generatedURL: url}],
-                {onConflict: ["preferredAlias"]}
+                [{generatedKey: generatedKey, longURL: formState.longURL, preferredAlias: formState.preferredAlias, generatedURL: url}]
             );
 
         if (error) {
@@ -121,7 +120,7 @@ const Form = () => {
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(formState.generatedURL);
+        navigator.clipboard.writeText(formState.generatedURL).then();
         setFormState((prevState) => ({...prevState, toolTipMessage: "Copied!"}));
     };
 
@@ -178,6 +177,7 @@ const Form = () => {
                                     </label>
                                     <input type="text"
                                            value={formState.generatedURL}
+                                           readOnly={true}
                                            placeholder="https://shorter.link..."
                                            className="input input-bordered"/>
 
