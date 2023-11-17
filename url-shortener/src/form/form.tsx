@@ -3,6 +3,8 @@ import React, {useEffect, useState} from "react";
 import {nanoid} from 'nanoid';
 import {isWebUri} from "valid-url";
 import {createClient} from '@supabase/supabase-js';
+import {useLocation} from "react-router-dom";
+import Toast from '../toast/Toast.tsx'
 
 // Create a single supabase client for interacting with your database
 const supabase = createClient(
@@ -18,6 +20,14 @@ interface FormState {
     errors: string[];
     errorMessage: Record<string, string>;
     toolTipMessage: string;
+    showAlert: boolean;
+    alertText: string;
+    alertStatus: string;
+}
+
+interface Toast {
+    text: string;
+    status: string;
 }
 
 const Form = () => {
@@ -29,11 +39,28 @@ const Form = () => {
         errors: [],
         errorMessage: {},
         toolTipMessage: 'Copy To Clipboard',
+        showAlert: true,
+        alertText: '',
+        alertStatus: ''
     });
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const urlNotFound = searchParams.get('urlNotFound');
+
     useEffect(() => {
         document.title = 'small.er';
+        if (urlNotFound) {
+            alert('URL not found.', 'error')
+        }
     }, []);
 
+    const alert = (text: string, status: string) => {
+        setFormState({
+            ...formState,
+            alertStatus: status,
+            alertText: text
+        })
+    }
     const onSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setFormState((prevState) => ({...prevState, loading: true, generatedURL: ""}));
@@ -55,8 +82,13 @@ const Form = () => {
 
         const {error} = await supabase
             .from("urls")
-            .upsert(
-                [{generatedKey: generatedKey, longURL: formState.longURL, preferredAlias: formState.preferredAlias, generatedURL: url}]
+            .insert(
+                [{
+                    generatedKey,
+                    longURL: formState.longURL,
+                    preferredAlias: formState.preferredAlias,
+                    generatedURL: url
+                }]
             );
 
         if (error) {
@@ -65,6 +97,7 @@ const Form = () => {
         }
 
         setFormState((prevState) => ({...prevState, generatedURL: url, loading: false}));
+        alert("Success!", "success")
     };
 
     const hasError = (key: string) => {
@@ -96,25 +129,33 @@ const Form = () => {
                 newErrors.push("preferredAlias");
                 newErrorMessages["preferredAlias"] = "Spaces are not allowed in aliases";
             }
+            try {
+                const {data, error} = await supabase
+                    .from("urls")
+                    .select("preferredAlias")
+                    .eq("preferredAlias", formState.preferredAlias)
+                    .maybeSingle();
 
-            const {data: keyExists, error} = await supabase
-                .from("urls")
-                .select("preferredAlias")
-                .eq("preferredAlias", formState.preferredAlias)
-                .single();
+                if (error) {
+                    console.error("Error checking if key exists: ", error);
+                    return false;
+                }
 
-            if (error) {
-                console.error("Error checking if key exists: ", error);
-                return false;
-            }
-
-            if (keyExists) {
-                newErrors.push("preferredAlias");
-                newErrorMessages["preferredAlias"] = "The alias you entered already exists. Please enter another one.";
+                if (data && data.preferredAlias) {
+                    newErrors.push("preferredAlias");
+                    newErrorMessages["preferredAlias"] = "The alias you entered already exists. Please enter another one.";
+                }
+            } catch (error: any) {
+                console.error(error)
             }
         }
 
-        setFormState((prevState) => ({...prevState, errors: newErrors, errorMessage: newErrorMessages, loading: false}));
+        setFormState((prevState) => ({
+            ...prevState,
+            errors: newErrors,
+            errorMessage: newErrorMessages,
+            loading: false
+        }));
 
         return newErrors.length === 0;
     };
@@ -125,6 +166,7 @@ const Form = () => {
     };
 
     return (
+
         <div className="flex justify-center items-center h-screen">
             <div className="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
                 <form autoComplete="off" className="card-body">
@@ -156,6 +198,7 @@ const Form = () => {
                                 id="preferredAlias"
                                 onChange={handleChange}
                                 value={formState.preferredAlias}
+                                maxLength={7}
                                 className={
                                     hasError("preferredAlias")
                                         ? "input input-error"
@@ -181,7 +224,10 @@ const Form = () => {
                                            placeholder="https://shorter.link..."
                                            className="input input-bordered"/>
 
-                                    <button onClick={copyToClipboard} data-toggle="tooltip" data-placement="top" title="Tooltip on top" className="btn btn-outline-secondary" type="button">Copy</button>
+                                    <button onClick={copyToClipboard} data-toggle="tooltip" data-placement="top"
+                                            title="Tooltip on top" className="btn btn-outline-secondary"
+                                            type="button">Copy
+                                    </button>
 
                                 </div>
                             </div>
@@ -198,6 +244,8 @@ const Form = () => {
                     </div>
                 </form>
             </div>
+            <div id="alerts"/>
+            <Toast message={"URL not found."} status={"error"}/>
         </div>
     );
 };

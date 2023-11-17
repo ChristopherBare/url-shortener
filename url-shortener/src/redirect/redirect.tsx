@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import {createClient} from "@supabase/supabase-js";
 import {useNavigate, useParams} from "react-router-dom";
 // Create a single supabase client for interacting with your database
@@ -8,37 +8,40 @@ const supabase = createClient(
 );
 
 const Redirect = () => {
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const { generatedKey } = useParams();
-  console.log(generatedKey);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const {generatedKey} = useParams<{ generatedKey: string }>();
 
-  useEffect(() => {
-    // Fetch the URL from Supabase based on the generatedKey parameter
-    supabase
-        .from('urls')
-        .select('longURL')
-        .eq('generatedKey', generatedKey)
-        .then(({ data, error }) => {
-          if (error) {
-            console.error('Error fetching URL:', error.message);
-            setLoading(false);
-            // Handle fetch error, e.g., show a generic error page or redirect to home
-            navigate('/');
-            return;
-          }
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const {data, error} = await supabase
+                    .from('urls')
+                    .select('longURL')
+                    .eq('generatedKey', generatedKey);
 
-          if (data && data.length > 0 && data[0].longURL) {
-            window.location.href = data[0].longURL; // Redirect to the fetched URL
-          } else {
-            console.error('URL not found');
-            // Handle error, e.g., show a 404 page or redirect to home
-            navigate('/');
-          }
-          setLoading(false);
-        });
-  }, [generatedKey, navigate]);
+                if (error) {
+                    throw new Error(error.message);
+                }
 
-  return loading ? <div>Loading...</div> : null;
+                if (data && data.length > 0 && data[0].longURL) {
+                    window.location.href = data[0].longURL;
+                } else {
+                    console.error('URL not found');
+                    navigate('/?urlNotFound=true'); // Redirect to home if URL not found
+                }
+            } catch (error: any) {
+                console.error('Error fetching URL:', error.message);
+                navigate('/'); // Redirect to home on fetch error
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [generatedKey, navigate]);
+
+    return loading ? <div>Loading...</div> : null;
 };
+
 export default Redirect;

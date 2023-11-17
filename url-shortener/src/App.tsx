@@ -12,8 +12,7 @@ function App() {
                   <div className="auth-inner">
                       <Routes>
                           <Route path='/' Component={Form} />
-                          <Route path="/app" Component={Form} />
-                          <Route path="/:generatedKey" Component={Redirect} />
+                          <Route path="/:generatedKey" element={<Redirect/>} />
                       </Routes>
                   </div>
               </div>
