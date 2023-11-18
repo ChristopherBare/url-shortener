@@ -66,10 +66,18 @@ const Form = () => {
             text: text,
             status: status,
         };
-        setFormState((prevState) => ({
-            ...prevState,
-            toasts: [...prevState.toasts, newToast], // Update toasts array
-        }));
+        if(formState.toasts.length === 0){
+            setFormState((prevState) => ({
+                ...prevState,
+                toasts: [newToast], // Update toasts array
+            }));
+        } else {
+            setFormState((prevState) => ({
+                ...prevState,
+                toasts: [...prevState.toasts, newToast], // Update toasts array
+            }));
+        }
+
     };
 
 // Function to remove a toast
