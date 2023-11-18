@@ -24,6 +24,7 @@ interface FormState {
     alertText: string;
     alertStatus: string;
 }
+
 const Form = () => {
     const [formState, setFormState] = useState<FormState>({
         longURL: '',
@@ -43,12 +44,12 @@ const Form = () => {
 
     useEffect(() => {
         document.title = 'small.er';
-        if (urlNotFound) {
-            alert('URL not found.', 'error')
+        if (Boolean(urlNotFound)) {
+            showAlert('URL not found.', 'error')
         }
     }, []);
 
-    const alert = (text: string, status: string) => {
+    const showAlert = (text: string, status: string) => {
         setFormState({
             ...formState,
             alertStatus: status,
@@ -91,7 +92,7 @@ const Form = () => {
         }
 
         setFormState((prevState) => ({...prevState, generatedURL: url, loading: false}));
-        alert("Success!", "success")
+        showAlert("Success!", "success");
     };
 
     const hasError = (key: string) => {
@@ -238,8 +239,7 @@ const Form = () => {
                     </div>
                 </form>
             </div>
-            <div id="alerts"/>
-            <Toast message={"URL not found."} status={"error"}/>
+            <Toast message={formState.alertText} status={formState.alertStatus}/>
         </div>
     );
 };

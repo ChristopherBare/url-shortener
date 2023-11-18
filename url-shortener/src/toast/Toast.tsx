@@ -16,6 +16,9 @@ const Toast: React.FC<ToastProps> = (props) => {
     const [alerts, setAlerts] = useState<DynamicToastChild[]>([]);
     const [initLoad, setInitLoad] = useState(false);
     const handleAddToast = (): void => {
+        if (message === '' || status === '') {
+            return;
+        }
         if (!initLoad) {
             setAlerts([
                 {
@@ -42,9 +45,7 @@ const Toast: React.FC<ToastProps> = (props) => {
 
     // Add a new alert on component mount or when props change
     React.useEffect(() => {
-        console.log(alerts)
         handleAddToast();
-        console.log(alerts)
     }, [message, status]);
 
     return (
