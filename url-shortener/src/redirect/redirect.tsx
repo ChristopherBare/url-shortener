@@ -13,6 +13,7 @@ const Redirect = () => {
     const {generatedKey} = useParams<{ generatedKey: string }>();
 
     useEffect(() => {
+        document.title = 'small.er';
         const fetchData = async () => {
             try {
                 const {data, error} = await supabase

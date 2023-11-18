@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 
 interface AlertProps {
+    id: string;
     text: string;
     status: string;
     onClose?: () => void;

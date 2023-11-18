@@ -21,8 +21,16 @@ interface FormState {
     errorMessage: Record<string, string>;
     toolTipMessage: string;
     showAlert: boolean;
+    alertId: string;
     alertText: string;
     alertStatus: string;
+    toasts: DynamicToastChild[];
+}
+
+interface DynamicToastChild {
+    id: string;
+    text: string;
+    status: string;
 }
 
 const Form = () => {
@@ -33,10 +41,12 @@ const Form = () => {
         loading: false,
         errors: [],
         errorMessage: {},
-        toolTipMessage: 'Copy To Clipboard',
+        toolTipMessage: 'Copy',
         showAlert: true,
+        alertId: '',
         alertText: '',
-        alertStatus: ''
+        alertStatus: '',
+        toasts: []
     });
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
@@ -45,20 +55,34 @@ const Form = () => {
     useEffect(() => {
         document.title = 'small.er';
         if (Boolean(urlNotFound)) {
-            showAlert('URL not found.', 'error')
+            addToast(nanoid(3), "URL not found.", "error")
         }
-    }, []);
+    }, [urlNotFound]);
 
-    const showAlert = (text: string, status: string) => {
-        setFormState({
-            ...formState,
-            alertStatus: status,
-            alertText: text
-        })
-    }
+    // Function to add a new toast
+    const addToast = (id: string, text: string, status: string) => {
+        const newToast: DynamicToastChild = {
+            id: id,
+            text: text,
+            status: status,
+        };
+        setFormState((prevState) => ({
+            ...prevState,
+            toasts: [...prevState.toasts, newToast], // Update toasts array
+        }));
+    };
+
+// Function to remove a toast
+    const removeToast = (id: string) => {
+        setFormState((prevState) => ({
+            ...prevState,
+            toasts: prevState.toasts.filter((toast) => toast.id !== id), // Update toasts array
+        }));
+    };
+
     const onSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        setFormState((prevState) => ({...prevState, loading: true, generatedURL: ""}));
+        setFormState((prevState) => ({...prevState, loading: true, generatedURL: "", toolTipMessage: "Copy"}));
 
         const isFormValid = await validateInput();
 
@@ -92,7 +116,7 @@ const Form = () => {
         }
 
         setFormState((prevState) => ({...prevState, generatedURL: url, loading: false}));
-        showAlert("Success!", "success");
+        addToast(nanoid(3), "Success!", "success");
     };
 
     const hasError = (key: string) => {
@@ -161,10 +185,10 @@ const Form = () => {
     };
 
     return (
-
         <div className="flex justify-center items-center h-screen">
             <div className="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
                 <form autoComplete="off" className="card-body">
+                    <h1 style={{fontSize: "40px", fontWeight: 'lighter'}} className="card-title">small.er</h1>
                     <div className="form-control">
                         <label className="label">
                             <span className="label-text">Long URL</span>
@@ -220,8 +244,8 @@ const Form = () => {
                                            className="input input-bordered"/>
 
                                     <button onClick={copyToClipboard} data-toggle="tooltip" data-placement="top"
-                                            title="Tooltip on top" className="btn btn-outline-secondary"
-                                            type="button">Copy
+                                            title={formState.toolTipMessage} className="btn btn-outline-secondary"
+                                            type="button">{formState.toolTipMessage}
                                     </button>
 
                                 </div>
@@ -239,7 +263,7 @@ const Form = () => {
                     </div>
                 </form>
             </div>
-            <Toast message={formState.alertText} status={formState.alertStatus}/>
+            <Toast alerts={formState.toasts} removeAlert={removeToast}/>
         </div>
     );
 };
