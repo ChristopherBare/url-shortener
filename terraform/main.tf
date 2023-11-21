@@ -6,3 +6,9 @@ module "s3_website" {
   origin_id           = "url-short-origin"
 }
 
+resource "null_resource" "upload_files" {
+  provisioner "local-exec" {
+    command = "aws s3 cp ../url-shortener/dist/ s3://${module.s3_website.website_bucket_name}/"
+  }
+  depends_on = [module.s3_website]
+}
