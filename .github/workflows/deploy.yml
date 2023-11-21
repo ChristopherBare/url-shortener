@@ -68,7 +68,7 @@ jobs:
         working-directory: ${{ github.workspace }}/terraform
         run: |
           terraform apply -auto-approve
-#      - name: Deploy
-#        working-directory: ${{env.site-directory}}
-#        run: |
-          
+      - name: Deploy
+        working-directory: ${{env.site-directory}}
+        run: |
+          aws s3 cp ../url-shortener/dist s3://url-shortener-bucket/ --recursive
