@@ -8,7 +8,7 @@ module "s3_website" {
 
 resource "null_resource" "upload_files" {
   provisioner "local-exec" {
-    command = "aws s3 cp ../url-shortener/dist/ s3://${module.s3_website.bucket_name}/"
+    command = "aws s3 cp ../url-shortener/dist s3://${module.s3_website.bucket_name}/ --recursive"
   }
   depends_on = [module.s3_website]
 }
