@@ -170,3 +170,9 @@ dist
 
 # IntelliJ based IDEs
 .idea
+
+.terraform.lock.hcl
+.bun.lockb
+
+terraform/.terraform
+/url-shortener/dist
