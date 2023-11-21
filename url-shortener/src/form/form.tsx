@@ -6,7 +6,7 @@ import {createClient} from '@supabase/supabase-js';
 import {useLocation} from "react-router-dom";
 import Toast from '../toast/Toast.tsx';
 
-// Create a single supabase client for interacting with your database
+// Create a single supabase client for interacting with your database.
 const supabase = createClient(
     "https://xpzdikragdwewvktxwre.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwemRpa3JhZ2R3ZXd2a3R4d3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTk5MTU3MzksImV4cCI6MjAxNTQ5MTczOX0.Ro6gMNRvindA_dhbL7iNuKGJgm65TcLE4gpX3k8fCCw"
