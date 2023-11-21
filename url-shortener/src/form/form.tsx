@@ -4,7 +4,7 @@ import {nanoid} from 'nanoid';
 import {isWebUri} from "valid-url";
 import {createClient} from '@supabase/supabase-js';
 import {useLocation} from "react-router-dom";
-import Toast from '../toast/Toast.tsx'
+import Toast from '../toast/Toast.tsx';
 
 // Create a single supabase client for interacting with your database
 const supabase = createClient(
@@ -13,6 +13,7 @@ const supabase = createClient(
 );
 
 interface FormState {
+    baseURL: string;
     longURL: string;
     preferredAlias: string;
     generatedURL: string;
@@ -35,6 +36,7 @@ interface DynamicToastChild {
 
 const Form = () => {
     const [formState, setFormState] = useState<FormState>({
+        baseURL: '',
         longURL: '',
         preferredAlias: '',
         generatedURL: '',
@@ -49,6 +51,8 @@ const Form = () => {
         toasts: []
     });
     const location = useLocation();
+    const fullURL = window.location.href;
+    const baseURL = fullURL.match(/^https?:\/\/[^/]+/);
     const searchParams = new URLSearchParams(location.search);
     const urlNotFound = searchParams.get('urlNotFound');
 
@@ -57,6 +61,13 @@ const Form = () => {
         if (Boolean(urlNotFound)) {
             addToast(nanoid(3), "URL not found.", "error")
         }
+        if(baseURL !== null){
+            setFormState((prevState) => ({
+                ...prevState,
+                baseURL: baseURL[0]
+            }))
+        }
+
     }, [urlNotFound]);
 
     // Function to add a new toast
@@ -98,13 +109,14 @@ const Form = () => {
             return;
         }
 
-        let baseURL = "localhost";
+
+
         let generatedKey = nanoid(5);
-        let url = `${baseURL}/${generatedKey}`;
+        let url = `${formState.baseURL}/${generatedKey}`;
 
         if (formState.preferredAlias !== "") {
             generatedKey = formState.preferredAlias;
-            url = `${baseURL}/${formState.preferredAlias}`;
+            url = `${formState.baseURL}/${formState.preferredAlias}`;
         }
 
         const {error} = await supabase
