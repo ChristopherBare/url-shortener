@@ -61,7 +61,7 @@ jobs:
           retention-days: 7
 
   infra:
-    name: Provision Infra (Terraform)
+    name: Terraform
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -113,86 +113,86 @@ jobs:
             echo "backend.hcl in place:"
             cat backend.hcl
           
-          - name: Terraform Init (reconfigure backend)
-            id: init
-            working-directory: ${{ env.TF_DIR }}
-            run: terraform init -input=false -reconfigure -backend-config=backend.hcl
-          
-          - name: Terraform Workspace
-            working-directory: ${{ env.TF_DIR }}
-            run: terraform workspace select default || terraform workspace new default
-          
-          - name: Terraform validate
-            id: validate
-            working-directory: ${{ env.TF_DIR }}
-            run: terraform validate -no-color
-          
-          - name: Terraform plan
-            id: plan
-            working-directory: ${{ env.TF_DIR }}
-            run: terraform plan -no-color
-            continue-on-error: true
-          
-          - name: Terraform apply (push to master only)
-            if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-            id: apply
-            working-directory: ${{ env.TF_DIR }}
-            run: terraform apply -auto-approve
-          
-          - name: Export Terraform outputs
-            id: tf-outputs
-            working-directory: ${{ env.TF_DIR }}
-            run: |
-              OUT=$(terraform output -json || echo "{}")
-              echo "$OUT"
-              echo "bucket=$(echo "$OUT" | jq -r '.bucket_name.value // .bucket.value // empty')" >> "$GITHUB_OUTPUT"
-              echo "distribution_id=$(echo "$OUT" | jq -r '.cloudfront_distribution_id.value // empty')" >> "$GITHUB_OUTPUT"
-              echo "website_url=$(echo "$OUT" | jq -r '.website_url.value // empty')" >> "$GITHUB_OUTPUT"
-          
-          outputs:
-            bucket: ${{ steps.tf-outputs.outputs.bucket }}
-            distribution_id: ${{ steps.tf-outputs.outputs.distribution_id }}
-            website_url: ${{ steps.tf-outputs.outputs.website_url }}
-          
-          deploy:
-            name: Upload & Invalidate
-            runs-on: ubuntu-latest
-            needs: infra
-            steps:
-              - name: Configure AWS credentials (OIDC)
-                uses: aws-actions/configure-aws-credentials@v4
-                with:
-                  role-to-assume: arn:aws:iam::726032046446:role/github-actions-role
-                  role-session-name: emaillambdasession
-                  aws-region: ${{ env.AWS_REGION }}
-          
-              - name: Download build artifact
-                uses: actions/download-artifact@v4
-                with:
-                  name: site-dist
-                  path: dist
-          
-              - name: Deploy to S3
-                run: |
-                  if [ -z "${{ needs.infra.outputs.bucket }}" ]; then
-                    echo "Bucket output is empty. Ensure Terraform defines output 'bucket_name' (or 'bucket')."
-                    exit 1
-                  fi
-                  aws s3 sync ./dist "s3://${{ needs.infra.outputs.bucket }}/" --delete
-          
-              - name: Create CloudFront invalidation
-                if: ${{ needs.infra.outputs.distribution_id != '' }}
-                run: |
-                  aws cloudfront create-invalidation \
-                    --distribution-id "${{ needs.infra.outputs.distribution_id }}" \
-                    --paths "/*"
-          
-              - name: Summary
-                run: |
-                  {
-                    echo "## Deploy Summary"
-                    echo ""
-                    echo "- **Bucket**: \`${{ needs.infra.outputs.bucket || 'n/a' }}\`"
-                    echo "- **Distribution ID**: \`${{ needs.infra.outputs.distribution_id || 'n/a' }}\`"
-                    echo "- **Website URL**: ${{ needs.infra.outputs.website_url || 'n/a' }}"
-                  } >> "$GITHUB_STEP_SUMMARY"
+      - name: Terraform Init (reconfigure backend)
+        id: init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -input=false -reconfigure -backend-config=backend.hcl
+
+      - name: Terraform Workspace
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform workspace select default || terraform workspace new default
+
+      - name: Terraform validate
+        id: validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform plan -no-color
+        continue-on-error: true
+
+      - name: Terraform apply (push to master only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        id: apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -auto-approve
+
+      - name: Export Terraform outputs
+        id: tf-outputs
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          OUT=$(terraform output -json || echo "{}")
+          echo "$OUT"
+          echo "bucket=$(echo "$OUT" | jq -r '.bucket_name.value // .bucket.value // empty')" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(echo "$OUT" | jq -r '.cloudfront_distribution_id.value // empty')" >> "$GITHUB_OUTPUT"
+          echo "website_url=$(echo "$OUT" | jq -r '.website_url.value // empty')" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      bucket: ${{ steps.tf-outputs.outputs.bucket }}
+      distribution_id: ${{ steps.tf-outputs.outputs.distribution_id }}
+      website_url: ${{ steps.tf-outputs.outputs.website_url }}
+
+  deploy:
+    name: Upload & Invalidate
+    runs-on: ubuntu-latest
+    needs: infra
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::726032046446:role/github-actions-role
+          role-session-name: emaillambdasession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: dist
+
+      - name: Deploy to S3
+        run: |
+          if [ -z "${{ needs.infra.outputs.bucket }}" ]; then
+            echo "Bucket output is empty. Ensure Terraform defines output 'bucket_name' (or 'bucket')."
+            exit 1
+          fi
+          aws s3 sync ./dist "s3://${{ needs.infra.outputs.bucket }}/" --delete
+
+      - name: Create CloudFront invalidation
+        if: ${{ needs.infra.outputs.distribution_id != '' }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ needs.infra.outputs.distribution_id }}" \
+            --paths "/*"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Deploy Summary"
+            echo ""
+            echo "- **Bucket**: \`${{ needs.infra.outputs.bucket || 'n/a' }}\`"
+            echo "- **Distribution ID**: \`${{ needs.infra.outputs.distribution_id || 'n/a' }}\`"
+            echo "- **Website URL**: ${{ needs.infra.outputs.website_url || 'n/a' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
