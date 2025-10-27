@@ -1,74 +1,154 @@
-name: deploy
+name: Deploy URL Shortener
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
+
+# Prevent overlapping runs on the same ref
+concurrency:
+  group: deploy-url-shortener-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  id-token: write
+  id-token: write   # for AWS OIDC
   contents: read
 
+env:
+  AWS_REGION: us-east-1
+  SITE_DIR: ./url-shortener
+  TF_DIR: ./terraform
+
 jobs:
-  deploy:
+  build:
+    name: Build (Bun)
     runs-on: ubuntu-latest
-    env:
-      site-directory: ./url-shortener
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: us-east-1
-    strategy:
-      matrix:
-        node-version: [ 18.x ]
     steps:
-      - name: configureawscredentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: arn:aws:iam::726032046446:role/github-actions-role
-          role-session-name: emaillambdasession
-          aws-region: ${{env.AWS_DEFAULT_REGION}}
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - name: Install dependencies
+
+      - name: Install deps
+        working-directory: ${{ env.SITE_DIR }}
         run: bun install
-        working-directory: ${{env.site-directory}}
+
       - name: Build
+        working-directory: ${{ env.SITE_DIR }}
         run: bun run build
-        working-directory: ${{env.site-directory}}
-      - name: Terraform fmt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: ${{ env.SITE_DIR }}/dist
+          if-no-files-found: error
+
+  infra:
+    name: Provision Infra (Terraform)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::726032046446:role/github-actions-role
+          role-session-name: emaillambdasession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform fmt (check)
         id: fmt
-        working-directory: ${{ github.workspace }}/terraform
+        working-directory: ${{ env.TF_DIR }}
         run: terraform fmt -check
         continue-on-error: true
 
-      - name: Terraform Init
+      - name: Terraform init
         id: init
-        working-directory: ${{ github.workspace }}/terraform
+        working-directory: ${{ env.TF_DIR }}
         run: terraform init
 
-      - name: Terraform Validate
+      - name: Terraform validate
         id: validate
-        working-directory: ${{ github.workspace }}/terraform
+        working-directory: ${{ env.TF_DIR }}
         run: terraform validate -no-color
 
-      - name: Terraform Plan
+      - name: Terraform plan
         id: plan
-        run: |
-          terraform plan -no-color
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform plan -no-color
         continue-on-error: true
-        working-directory: ${{ github.workspace }}/terraform
 
-      - name: Terraform Apply
+      - name: Terraform apply
         id: apply
-        working-directory: ${{ github.workspace }}/terraform
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -auto-approve
+
+      - name: Export Terraform outputs
+        id: tf-outputs
+        working-directory: ${{ env.TF_DIR }}
         run: |
-          terraform apply -auto-approve
-      - name: Deploy
-        working-directory: ${{env.site-directory}}
+          OUT=$(terraform output -json)
+          echo "$OUT"
+          echo "bucket=$(echo "$OUT" | jq -r '.bucket_name.value // .bucket.value // ""')" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(echo "$OUT" | jq -r '.cloudfront_distribution_id.value // ""')" >> "$GITHUB_OUTPUT"
+          echo "website_url=$(echo "$OUT" | jq -r '.website_url.value // ""')" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      bucket: ${{ steps.tf-outputs.outputs.bucket }}
+      distribution_id: ${{ steps.tf-outputs.outputs.distribution_id }}
+      website_url: ${{ steps.tf-outputs.outputs.website_url }}
+
+  deploy:
+    name: Upload & Invalidate
+    runs-on: ubuntu-latest
+    needs: infra
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::726032046446:role/github-actions-role
+          role-session-name: emaillambdasession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: dist
+
+      - name: Deploy to S3
         run: |
-          aws s3 cp ../url-shortener/dist s3://url-shortener-bucket/ --recursive
+          if [ -z "${{ needs.infra.outputs.bucket }}" ]; then
+            echo "Bucket output is empty. Ensure Terraform defines an output named 'bucket_name' (or 'bucket')."
+            exit 1
+          fi
+          aws s3 sync ./dist "s3://${{ needs.infra.outputs.bucket }}/" --delete
+
+      - name: Create CloudFront invalidation
+        if: ${{ needs.infra.outputs.distribution_id != '' }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ needs.infra.outputs.distribution_id }}" \
+            --paths "/*"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Deploy Summary"
+            echo ""
+            echo "- **Bucket**: \`${{ needs.infra.outputs.bucket }}\`"
+            echo "- **Distribution ID**: \`${{ needs.infra.outputs.distribution_id || 'n/a' }}\`"
+            echo "- **Website URL**: ${{ needs.infra.outputs.website_url || 'n/a' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
