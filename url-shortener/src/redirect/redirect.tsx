@@ -3,10 +3,13 @@
 import {useState, useEffect} from 'react';
 import {createClient} from "@supabase/supabase-js";
 import {useNavigate, useParams} from "react-router-dom";
+import 'dotenv';
 // Create a single supabase client for interacting with your database
-const supabaseUrl = 'https://aoeugzsuxlvofoysokry.supabase.co'
-// @ts-ignore
-const supabase = createClient(supabaseUrl, process.env.SUPABASE_KEY);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseKey = import.meta.env.VITE_SUPABASE_KEY as string;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 
 const Redirect = () => {
     const [loading, setLoading] = useState(true);
