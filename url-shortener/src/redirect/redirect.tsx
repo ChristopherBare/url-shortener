@@ -25,9 +25,7 @@ const Redirect = () => {
                     .select('longURL')
                     .eq('generatedKey', generatedKey);
 
-                if (error) {
-                    throw new Error(error.message);
-                }
+                if (error) throw new Error(error.message);
 
                 if (data && data.length > 0 && data[0].longURL) {
                     window.location.href = data[0].longURL;
