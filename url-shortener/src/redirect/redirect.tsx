@@ -1,3 +1,5 @@
+// noinspection ExceptionCaughtLocallyJS
+
 import {useState, useEffect} from 'react';
 import {createClient} from "@supabase/supabase-js";
 import {useNavigate, useParams} from "react-router-dom";
