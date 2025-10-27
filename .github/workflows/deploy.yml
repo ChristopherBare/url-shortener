@@ -43,7 +43,7 @@ jobs:
 
       - name: Install deps
         working-directory: ${{ env.SITE_DIR }}
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build (inject public env)
         working-directory: ${{ env.SITE_DIR }}
