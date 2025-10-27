@@ -90,7 +90,7 @@ jobs:
           terraform init \
             -input=false \
             -reconfigure \
-            -backend-config=backend.hcl
+            -backend-config=backend.tf
       
 
       - name: Terraform validate
