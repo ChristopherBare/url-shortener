@@ -5,8 +5,8 @@ import {createClient} from "@supabase/supabase-js";
 import {useNavigate, useParams} from "react-router-dom";
 // Create a single supabase client for interacting with your database
 const supabaseUrl = 'https://aoeugzsuxlvofoysokry.supabase.co'
-const supabaseKey:string = process.env.SUPABASE_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)
+// @ts-ignore
+const supabase = createClient(supabaseUrl, process.env.SUPABASE_KEY);
 
 const Redirect = () => {
     const [loading, setLoading] = useState(true);
