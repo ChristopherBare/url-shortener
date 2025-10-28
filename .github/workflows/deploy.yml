@@ -39,7 +39,9 @@ jobs:
             ~/.bun/install/cache
             ${{ env.SITE_DIR }}/bun.lockb
             ${{ env.SITE_DIR }}/node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles(format('{0}/bun.lockb', env.SITE_DIR)) }}
+          key: bun-${{ runner.os }}-${{ hashFiles('url-shortener/bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
 
       - name: Install deps
         working-directory: ${{ env.SITE_DIR }}
@@ -102,17 +104,17 @@ jobs:
               echo "backend.hcl missing and backend secrets not set; commit backend.hcl or provide secrets."
               exit 1
             fi
-            cat > backend.hcl <<EOF
+            cat > backend.hcl <<'EOF'
             bucket         = "${TF_BACKEND_BUCKET}"
             key            = "${TF_BACKEND_KEY}"
-            region         = "${{ env.AWS_REGION }}"
+            region         = "${AWS_REGION}"
             dynamodb_table = "${TF_BACKEND_DDB}"
             encrypt        = true
             EOF
-            fi
-            echo "backend.hcl in place:"
-            cat backend.hcl
-          
+          fi
+          echo "backend.hcl in place:"
+          cat backend.hcl
+
       - name: Terraform Init (reconfigure backend)
         id: init
         working-directory: ${{ env.TF_DIR }}
