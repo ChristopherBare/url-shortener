@@ -104,7 +104,7 @@ jobs:
               echo "backend.hcl missing and backend secrets not set; commit backend.hcl or provide secrets."
               exit 1
             fi
-            cat > backend.hcl <<'EOF'
+            cat > backend.hcl <<EOF
             bucket         = "${TF_BACKEND_BUCKET}"
             key            = "${TF_BACKEND_KEY}"
             region         = "${AWS_REGION}"
