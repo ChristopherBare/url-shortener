@@ -5,7 +5,7 @@ import {createClient} from "@supabase/supabase-js";
 import {useNavigate, useParams} from "react-router-dom";
 import 'dotenv';
 // Create a single supabase client for interacting with your database
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseUrl = "https://aoeugzsuxlvofoysokry.supabase.co";
 const supabaseKey = import.meta.env.VITE_SUPABASE_KEY as string;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
