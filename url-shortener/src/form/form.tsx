@@ -2,15 +2,9 @@ import '../App.css';
 import React, {useEffect, useState} from "react";
 import {nanoid} from 'nanoid';
 import {isWebUri} from "valid-url";
-import {createClient} from '@supabase/supabase-js';
+import {dynamodbService} from '../services/dynamodb';
 import {useLocation} from "react-router-dom";
 import Toast from '../toast/Toast.tsx';
-
-// Create a single supabase client for interacting with your database.
-const supabase = createClient(
-    "https://xpzdikragdwewvktxwre.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwemRpa3JhZ2R3ZXd2a3R4d3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTk5MTU3MzksImV4cCI6MjAxNTQ5MTczOX0.Ro6gMNRvindA_dhbL7iNuKGJgm65TcLE4gpX3k8fCCw"
-);
 
 interface FormState {
     baseURL: string;
@@ -109,8 +103,6 @@ const Form = () => {
             return;
         }
 
-
-
         let generatedKey = nanoid(5);
         let url = `${formState.baseURL}/${generatedKey}`;
 
@@ -119,24 +111,21 @@ const Form = () => {
             url = `${formState.baseURL}/${formState.preferredAlias}`;
         }
 
-        const {error} = await supabase
-            .from("urls")
-            .insert(
-                [{
-                    generatedKey,
-                    longURL: formState.longURL,
-                    preferredAlias: formState.preferredAlias,
-                    generatedURL: url
-                }]
-            );
+        try {
+            await dynamodbService.insertUrl({
+                generatedKey,
+                longURL: formState.longURL,
+                preferredAlias: formState.preferredAlias,
+                generatedURL: url
+            });
 
-        if (error) {
+            setFormState((prevState) => ({...prevState, generatedURL: url, loading: false}));
+            addToast(nanoid(3), "Success!", "success");
+        } catch (error: any) {
             console.error("Error saving to database: ", error);
-            return;
+            addToast(nanoid(3), "Error saving URL. Please try again.", "error");
+            setFormState((prevState) => ({...prevState, loading: false}));
         }
-
-        setFormState((prevState) => ({...prevState, generatedURL: url, loading: false}));
-        addToast(nanoid(3), "Success!", "success");
     };
 
     const hasError = (key: string) => {
@@ -169,23 +158,15 @@ const Form = () => {
                 newErrorMessages["preferredAlias"] = "Spaces are not allowed in aliases";
             }
             try {
-                const {data, error} = await supabase
-                    .from("urls")
-                    .select("preferredAlias")
-                    .eq("preferredAlias", formState.preferredAlias)
-                    .maybeSingle();
+                const aliasExists = await dynamodbService.checkAliasExists(formState.preferredAlias);
 
-                if (error) {
-                    console.error("Error checking if key exists: ", error);
-                    return false;
-                }
-
-                if (data && data.preferredAlias) {
+                if (aliasExists) {
                     newErrors.push("preferredAlias");
                     newErrorMessages["preferredAlias"] = "The alias you entered already exists. Please enter another one.";
                 }
             } catch (error: any) {
-                console.error(error)
+                console.error("Error checking if alias exists: ", error);
+                // Continue without alias check if there's an error
             }
         }
 

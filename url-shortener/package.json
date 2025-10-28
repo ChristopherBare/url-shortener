@@ -10,7 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.4",
+    "@aws-sdk/client-dynamodb": "^3.400.0",
+    "@aws-sdk/lib-dynamodb": "^3.400.0",
     "@types/valid-url": "^1.0.7",
     "autoprefixer": "^10.4.16",
     "daisyui": "latest",
