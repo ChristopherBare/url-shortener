@@ -92,29 +92,6 @@ jobs:
         run: terraform fmt -check
         continue-on-error: true
 
-      - name: Create backend.hcl (if not committed)
-        working-directory: ${{ env.TF_DIR }}
-        env:
-          TF_BACKEND_BUCKET: ${{ secrets.TF_BACKEND_BUCKET }}
-          TF_BACKEND_KEY: ${{ secrets.TF_BACKEND_KEY }}
-          TF_BACKEND_DDB: ${{ secrets.TF_BACKEND_DDB }}
-        run: |
-          if [ ! -f backend.hcl ]; then
-            if [ -z "${TF_BACKEND_BUCKET}" ] || [ -z "${TF_BACKEND_KEY}" ] || [ -z "${TF_BACKEND_DDB}" ]; then
-              echo "backend.hcl missing and backend secrets not set; commit backend.hcl or provide secrets."
-              exit 1
-            fi
-            cat > backend.hcl <<EOF
-            bucket         = "${TF_BACKEND_BUCKET}"
-            key            = "${TF_BACKEND_KEY}"
-            region         = "${AWS_REGION}"
-            dynamodb_table = "${TF_BACKEND_DDB}"
-            encrypt        = true
-            EOF
-          fi
-          echo "backend.hcl in place:"
-          cat backend.hcl
-
       - name: Terraform Init (reconfigure backend)
         id: init
         working-directory: ${{ env.TF_DIR }}
