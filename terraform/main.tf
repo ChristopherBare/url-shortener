@@ -77,10 +77,22 @@ resource "aws_apigatewayv2_api" "url_shortener" {
   }
 }
 
+# Get current region for Lambda ARN
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # API Gateway Integration
 resource "aws_apigatewayv2_integration" "lambda_integration" {
   api_id           = aws_apigatewayv2_api.url_shortener.id
   integration_type = "AWS_PROXY"
+
+  integration_method = "POST"
+  payload_format_version = "2.0"
+
+  # For HTTP APIs, use the Lambda invoke ARN directly
+  integration_uri = aws_lambda_function.url_shortener.invoke_arn
+
+  depends_on = [aws_lambda_permission.api_gateway]
 }
 
 # API Gateway Route
