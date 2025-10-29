@@ -9,3 +9,11 @@ output "dynamodb_table_name" {
 output "dynamodb_table_arn" {
   value = aws_dynamodb_table.url_shortener.arn
 }
+
+output "api_gateway_url" {
+  value = "${aws_apigatewayv2_stage.dev.invoke_url}"
+}
+
+output "lambda_function_name" {
+  value = aws_lambda_function.url_shortener.function_name
+}

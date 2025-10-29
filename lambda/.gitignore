@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Build outputs
+index.js
+index.js.map
+*.d.ts
+
+# Zip files
+lambda_function.zip
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# SAM
+.aws-sam/
+sam-tests/
+
+# Build artifacts
+dist/
+build/

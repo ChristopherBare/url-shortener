@@ -1,0 +1,4 @@
+# Terraform Variables for URL Shortener (Dev POC)
+
+# DynamoDB Table name (optional - defaults to "url-shortener-urls")
+# dynamodb_table_name = "url-shortener-urls"
