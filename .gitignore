@@ -172,6 +172,7 @@ dist
 
 .terraform.lock.hcl
 .bun.lockb
+/url-shortener/bun.lockb
 
-terraform/.terraform
+terraform/.terraform/*
 /url-shortener/dist
