@@ -65,10 +65,11 @@ resource "aws_lambda_function" "url_shortener" {
   depends_on = [aws_iam_role_policy.lambda_dynamodb_policy]
 }
 
-# API Gateway REST API
+# API Gateway HTTP API
 resource "aws_apigatewayv2_api" "url_shortener" {
   name          = "url-shortener-api"
   protocol_type = "HTTP"
+
   cors_configuration {
     allow_origins = ["*"]
     allow_methods = ["GET", "POST", "OPTIONS"]
@@ -80,16 +81,14 @@ resource "aws_apigatewayv2_api" "url_shortener" {
 resource "aws_apigatewayv2_integration" "lambda_integration" {
   api_id           = aws_apigatewayv2_api.url_shortener.id
   integration_type = "AWS_PROXY"
-  integration_method = "POST"
-  payload_format_version = "2.0"
-  target = aws_lambda_function.url_shortener.arn
 }
 
 # API Gateway Route
 resource "aws_apigatewayv2_route" "api_routes" {
-  api_id    = aws_apigatewayv2_api.url_shortener.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+  api_id             = aws_apigatewayv2_api.url_shortener.id
+  route_key          = "$default"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+  authorization_type = "NONE"
 }
 
 # API Gateway Stage
